@@ -153,7 +153,7 @@ sub passenv {
 sub passenv_makestr {
     my @vars;
 
-    for (keys %passenv) {
+    for (sort keys %passenv) {
         push @vars, "$_=\$($_)";
     }
 
@@ -376,7 +376,7 @@ sub httpd_config {
             # not sure what else could go wrong but we can't continue
             die "something is wrong, mod_perl 2.0 build should have " .
                 "supplied all the needed information to run the tests. " .
-                "Please post lib/Apache/BuildConfig.pm along with the " .
+                "Please post lib/Apache2/BuildConfig.pm along with the " .
                 "bug report";
         }
 
@@ -1124,7 +1124,7 @@ sub clean {
     $self->cmodules_clean;
     $self->sslca_clean;
 
-    for (keys %{ $self->{clean}->{files} }) {
+    for (sort keys %{ $self->{clean}->{files} }) {
         if (-e $_) {
             debug "unlink $_";
             unlink $_;
@@ -1620,7 +1620,7 @@ sub generate_httpd_conf {
     # but wasn't included in the system-wide httpd.conf
 
     print $out "<IfModule mod_alias.c>\n";
-    for (keys %aliases) {
+    for (sort keys %aliases) {
         next unless $vars->{$aliases{$_}};
         print $out "    Alias /getfiles-$_ $vars->{$aliases{$_}}\n";
     }
@@ -1672,7 +1672,7 @@ sub need_reconfiguration {
     # last run and thus avoid the reconfiguration?
     {
         my $passenv = passenv();
-        if (my @env_vars = grep { $ENV{$_} } keys %$passenv) {
+        if (my @env_vars = sort grep { $ENV{$_} } keys %$passenv) {
             push @reasons, "environment variables (@env_vars) are set";
         }
     }
@@ -2147,6 +2147,12 @@ DocumentRoot "@DocumentRoot@"
 PidFile     @t_pid_file@
 ErrorLog    @t_logs@/error_log
 LogLevel    debug
+
+<IfModule mod_version.c>
+<IfVersion > 2.4.1>
+    DefaultRunTimeDir "@t_logs@"
+</IfVersion>
+</IfModule>
 
 <IfModule mod_log_config.c>
     TransferLog @t_logs@/access_log

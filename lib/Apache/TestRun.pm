@@ -1097,9 +1097,6 @@ sub generate_script {
 
     my %args = @Apache::TestMM::Argv;
     while (my($k, $v) = each %args) {
-        unless (defined $v) {
-            die "key $k has no value";
-        }
         $v =~ s/\|/\\|/g;
         $body .= "\n\$Apache::TestConfig::Argv{'$k'} = q|$v|;\n";
     }

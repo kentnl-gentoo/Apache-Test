@@ -86,6 +86,9 @@ WriteMakefile(
     NO_META   => $no_meta,
     dist      => {
         COMPRESS => 'gzip -9f', SUFFIX => 'gz',
+        PREOP   => 'find $(DISTVNAME) -type d -print|xargs chmod 0755 && ' .
+                   'find $(DISTVNAME) -type f -print|xargs chmod 0644',
+        TO_UNIX => 'find $(DISTVNAME) -type f -print|xargs dos2unix'
     },
     clean     => {
         FILES => "@clean_files",
@@ -98,14 +101,14 @@ check_prereqs();
 
 sub check_prereqs {
     my %fail = ();
-    for (keys %prereq) {
+    for (sort keys %prereq) {
         unless (chk_version($_, $prereq{$_})) {
             $fail{$_} = $prereq{$_};
         }
     }
     if (%fail) {
         error "\nThe following Apache-Test dependencies aren't satisfied:",
-            map { "\t$_: $fail{$_}" } keys %fail;
+            map { "\t$_: $fail{$_}" } sort keys %fail;
         error "Install those from http://search.cpan.org and try again";
         exit 0;
     }
@@ -124,7 +127,7 @@ sub chk_version {
 
     my $vstr = ${"${pkg}::VERSION"} ? "found v" . ${"${pkg}::VERSION"}
         : "not found";
-    my $vnum = ${"${pkg}::VERSION"} || 0;
+    my $vnum = eval(${"${pkg}::VERSION"}) || 0;
 
     print $vnum >= $wanted ? "ok\n" : " " . $vstr . "\n";
 
@@ -146,6 +149,12 @@ sub set_version {
     close $fh;
 }
 
+sub add_dep {
+    my($string, $targ, $add) = @_;
+    $$string =~ s/($targ\s+::)/$1 $add/;
+}
+
+no warnings 'redefine';
 sub MY::postamble {
     my $self = shift;
 
@@ -160,10 +169,7 @@ EOF
     return $string;
 }
 
-sub add_dep {
-    my($string, $targ, $add) = @_;
-    $$string =~ s/($targ\s+::)/$1 $add/;
-}
+
 
 sub MY::test {
     my $self = shift;
