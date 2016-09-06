@@ -37,7 +37,7 @@ BEGIN {
 
 use vars qw(@ISA @EXPORT %EXPORT_TAGS $VERSION %SubTests @SkipReasons);
 
-$VERSION = '1.39';
+$VERSION = '1.40';
 
 my @need = qw(need_lwp need_http11 need_cgi need_access need_auth
               need_module need_apache need_min_apache_version
@@ -1040,6 +1040,8 @@ if no reason is given a default reason will be used.
 
 =head1 Additional Configuration Variables
 
+=over 4
+
 =item basic_config
 
   my $basic_cfg = Apache::Test::basic_config();
@@ -1071,6 +1073,8 @@ accessible as:
 If no arguments are passed, the reference to the variables hash is
 returned. If one or more arguments are passed the corresponding values
 are returned.
+
+=back
 
 =head1 Test::More Integration
 

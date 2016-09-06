@@ -46,16 +46,29 @@ my $cakey    = 'keys/ca.pem';
 my $cacert   = 'certs/ca.crt';
 my $capolicy = '-policy policy_anything';
 my $cacrl    = 'crl/ca-bundle.crl';
+my $dgst     = 'sha256';
 
 #we use the same password for everything
 my $pass    = 'httpd';
 my $passin  = "-passin pass:$pass";
 my $passout = "-passout pass:$pass";
 
+# (limited) subjectAltName otherName testing
+my $san_msupn  = ', otherName:msUPN;UTF8:$mail';
+my $san_dnssrv = ', otherName:1.3.6.1.5.5.7.8.7;IA5:_https.$CN';
+
 # in 0.9.7 s/Email/emailAddress/ in DN
 my $email_field = Apache::Test::normalize_vstring($version) <
                   Apache::Test::normalize_vstring("0.9.7") ?
                   "Email" : "emailAddress";
+
+# downgrade to SHA-1 for OpenSSL before 0.9.8
+if (Apache::Test::normalize_vstring($version) <
+    Apache::Test::normalize_vstring("0.9.8")) {
+    $dgst = 'sha1';
+    # otherNames in x509v3_config are not supported either
+    $san_msupn = $san_dnssrv = "";
+}
 
 my $ca_dn = {
     asf => {
@@ -207,11 +220,14 @@ sub config_file {
     writefile($db, '', 1);
 
     writefile($file, <<EOF);
+mail                   = $dn->{$email_field}
+CN                     = $dn->{CN}
+
 [ req ]
 distinguished_name     = req_distinguished_name
 attributes             = req_attributes
 prompt                 = no
-default_bits           = 1024
+default_bits           = 2048
 output_password        = $pass
 
 [ req_distinguished_name ]
@@ -220,8 +236,8 @@ ST                     = $dn->{ST}
 L                      = $dn->{L}
 O                      = $dn->{O}
 OU                     = $dn->{OU}
-CN                     = $dn->{CN}
-emailAddress           = $dn->{$email_field}
+CN                     = \$CN
+$email_field           = \$mail
 
 [ req_attributes ]
 challengePassword      = $pass
@@ -242,7 +258,7 @@ private_key      = $cakey       # The private key
 
 default_days     = 365          # how long to certify for
 default_crl_days = 365          # how long before next CRL
-default_md       = sha1         # which md to use.
+default_md       = $dgst        # which md to use.
 preserve         = no           # keep passed DN ordering
 
 [ policy_anything ]
@@ -252,12 +268,15 @@ localityName            = optional
 organizationName        = optional
 organizationalUnitName  = optional
 commonName              = supplied
-emailAddress            = optional
+$email_field            = optional
 
-[ comment ]
+[ client_ok_ext ]
 nsComment = This Is A Comment
 1.3.6.1.4.1.18060.12.0 = DER:0c064c656d6f6e73
+subjectAltName = email:\$mail$san_msupn
 
+[ server_ext ]
+subjectAltName = DNS:\$CN$san_dnssrv
 EOF
 
     return $file;
@@ -305,12 +324,12 @@ sub new_key {
         #this takes a long time so just do it once
         #don't do this in real life
         unless (-e 'dsa-param') {
-            openssl dsaparam => '-inform PEM -out dsa-param 1024';
+            openssl dsaparam => '-inform PEM -out dsa-param 2048';
         }
-        openssl gendsa => "dsa-param $out";
+        openssl gendsa => "$out dsa-param";
     }
     else {
-        openssl genrsa => "$out 1024";
+        openssl genrsa => "$out 2048";
     }
 }
 
@@ -329,7 +348,9 @@ sub sign_cert {
     my $name = shift;
     my $exts = '';
 
-    $exts = ' -extensions comment' if $name =~ /client_ok/;
+    $exts = ' -extensions client_ok_ext' if $name =~ /client_ok/;
+
+    $exts = ' -extensions server_ext' if $name =~ /server/;
 
     openssl ca => "$capolicy -in csr/$name.csr -out certs/$name.crt",
                   $passin, config($name), '-batch', $exts;
@@ -550,6 +571,14 @@ sub version {
     my $version = qx($openssl version);
     return $1 if $version =~ /^OpenSSL (\S+) /;
     return 0;
+}
+
+sub dgst {
+    return $dgst;
+}
+
+sub email_field {
+    return $email_field;
 }
 
 1;
