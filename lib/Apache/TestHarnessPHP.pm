@@ -90,11 +90,6 @@ sub get_tests {
                             'make sure php is in your PATH');
         @tests = grep { not /\.php$/ } @tests;
     }
-    elsif (! $phpclient) {
-        warning(join ' - ', 'skipping *.php tests',
-                            'Test::Harness 2.38 not available');
-        @tests = grep { not /\.php$/ } @tests;
-    }
 
     return @tests;
 }
