@@ -23,7 +23,7 @@ use warnings FATAL => 'all';
 
 use Apache::TestTrace;
 
-use File::Spec::Functions qw(rel2abs splitdir file_name_is_absolute);
+use File::Spec::Functions qw(rel2abs splitdir file_name_is_absolute catfile);
 use File::Basename qw(dirname basename);
 
 sub strip_quotes {
